@@ -1,0 +1,4 @@
+appsettings.json merge=ours
+appsettings.Production.json merge=ours
+appsettings.Staging.json merge=ours
+appsettings.Development.json merge=ours

@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+	  <Version>1.1.9</Version>
+	  <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	  <Authors>cloud.xg</Authors>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xg.Cloud.EntityFrameworkCore\Xg.Cloud.EntityFrameworkCore.csproj" />
+  </ItemGroup>
+
+</Project>

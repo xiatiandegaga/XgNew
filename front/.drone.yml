@@ -1,0 +1,227 @@
+kind: pipeline # 默认为 pipeline
+type: docker 
+name: deployment # 构建文件名称
+
+environment:
+  STATIC_PROXY_FILENAME: .env.staging
+  STATIC_PROXY_FILENAME_PRO: .env.production
+  PROJECT_DOMAIN: https://i.coffeehall.cn/
+  DOCKER_REGISTRY: dockerimg.coffeehall.cn:8088
+  DOCKER_IMAGE: dockerimg.coffeehall.cn:8088/${DRONE_BRANCH}
+  HOST_NAME: i.coffeehall.cn
+  DEV_PROJECT_DOMAIN: https://dev.coffeehall.cn/
+  DEV_DOCKER_REGISTRY: dockerimg.coffeehall.cn:8088
+  DEV_DOCKER_IMAGE: dockerimg.coffeehall.cn:8088/${DRONE_BRANCH}
+  DEV_HOST_NAME: dev.coffeehall.cn
+  
+steps: # 数组结构，流水线化的构建步骤
+# - name: loading cache # 加载缓存
+#   pull: if-not-exists # 如果镜像不存在则拉取,免去每次都要重新下载
+#   image: drillster/drone-volume-cache
+#   volumes:
+#   - name: cache
+#     path: /cache
+#   settings:
+#     restore: true
+#     mount:
+#     - ./node_modules
+
+
+- name: dev-build  # 构建项目
+  pull: if-not-exists # 如果镜像不存在则拉取,免去每次都要重新下载
+  image: xiatiandegaga/node:18.20.0-canvas-docker #    本步骤运行在哪个docker镜像中，该镜像必须存在于 docker hub 中，可在 https://hub.docker.com/_/microsoft-dotnet-sdk 查看对应版本号
+  resources:
+    limits:
+      cpu: 2000
+      memory: 2000MiB
+  privileged: true
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+  commands:  # 构建过程中，将会依次执行的命令，如果命令退出码非0，将会终止构建本次构建
+  - echo ========开始构建并发布项目======== # 输出
+  - echo $${DRONE_BRANCH}
+  - echo $${DRONE_BUILD_CREATED}
+
+  - sed -i "s#xxxx-xxxx:xx#$${DRONE_BRANCH}#g" $${STATIC_PROXY_FILENAME}
+  - yarn config set registry https://registry.npmmirror.com && yarn install && npm run build:staging
+  - cd dist
+  # - PROJECT_BACKEND_URL=$PROJECT_DOMAIN$DRONE_BRANCH
+  # - sed -i  "s#<domain>#$DEV_PROJECT_DOMAIN$DRONE_BRANCH#g" config.pro.js
+  # - sed -i  "s#front#backend#g" config.pro.js
+  - docker build  -t  $${DEV_DOCKER_IMAGE}:$${DRONE_BUILD_CREATED} .
+  - docker login -u admin -p Sxq_19891112 $${DEV_DOCKER_REGISTRY}
+  - docker push $${DEV_DOCKER_IMAGE}:$${DRONE_BUILD_CREATED}
+  - docker rmi $${DEV_DOCKER_IMAGE}:$${DRONE_BUILD_CREATED} -f
+  - cd ./deploy/product
+  - sed -i "s#<env>-front-<project>#$${DRONE_BRANCH}#g" common.yaml
+  - sed -i "s#<HOST_NAME>#$${DEV_HOST_NAME}#g" common.yaml
+  - sed -i "s#xxxx-xxxx:xx#$${DEV_DOCKER_IMAGE}:$${DRONE_BUILD_CREATED}#g" common.yaml
+  when:
+    branch:
+      include:
+      - dev-*
+
+- name: dev-deploy
+  image: xiatiandegaga/drone-k8s-deploy:latest
+  pull: if-not-exists
+  settings:
+    yaml: ./dist/deploy/product/common.yaml
+    kubeconfig:
+      from_secret: dev-kubeconfig
+  when:
+    status:
+    - success
+    branch:
+      include:
+      - dev-*
+
+
+- name: pro-build  # 构建项目
+  pull: if-not-exists # 如果镜像不存在则拉取,免去每次都要重新下载
+  image: xiatiandegaga/node:18.20.0-canvas-docker #    本步骤运行在哪个docker镜像中，该镜像必须存在于 docker hub 中，可在 https://hub.docker.com/_/microsoft-dotnet-sdk 查看对应版本号
+  resources:
+    limits:
+      cpu: 2000
+      memory: 2000MiB
+  privileged: true
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+  commands:  # 构建过程中，将会依次执行的命令，如果命令退出码非0，将会终止构建本次构建
+  - echo ========开始构建并发布项目======== # 输出
+  - echo $${DRONE_BRANCH}
+  - echo $${DRONE_BUILD_CREATED}
+
+  - sed -i "s#xxxx-xxxx:xx#$${DRONE_BRANCH}#g" $${STATIC_PROXY_FILENAME_PRO}
+  - yarn config set registry https://registry.npmmirror.com && yarn install && npm run build:production
+  - cd dist
+
+  # - PROJECT_BACKEND_URL=$PROJECT_DOMAIN$DRONE_BRANCH
+  - docker build  -t  $${DOCKER_IMAGE}:$${DRONE_BUILD_CREATED} .
+  - docker login -u admin -p Sxq_19891112 $${DOCKER_REGISTRY}
+  - docker push $${DOCKER_IMAGE}:$${DRONE_BUILD_CREATED}
+  - docker rmi $${DOCKER_IMAGE}:$${DRONE_BUILD_CREATED} -f
+  - cd ./deploy/product
+  - sed -i "s#<env>-front-<project>#$${DRONE_BRANCH}#g" common.yaml
+  - sed -i "s#<HOST_NAME>#$${HOST_NAME}#g" common.yaml
+  - sed -i "s#xxxx-xxxx:xx#$${DOCKER_IMAGE}:$${DRONE_BUILD_CREATED}#g" common.yaml
+  when:
+    branch:
+      include:
+      - pro-*
+
+- name: pro-deploy
+  image: xiatiandegaga/drone-k8s-deploy:latest
+  pull: if-not-exists
+  settings:
+    yaml: ./dist/deploy/product/common.yaml
+    kubeconfig:
+      from_secret: pro-kubeconfig
+  when:
+    status:
+    - success
+    branch:
+      include:
+      - pro-*
+
+
+    # k8s_skip_tls: true
+    # k8s_server: https://1.117.225.83:6443
+    # k8s_token:
+    #   from_secret: dev-k8s-token
+    # templates:
+    #   - temPublish/Deploy/backend/*.yaml
+  # commands:
+  # - echo ========开始k8s部署======== # 输出
+  # - ls
+  # - kubectl apply -f  wqwqw
+# - name: scp transmission file # 使用 scp 插件，将打包好的程序传送到需要部署的目标服务器
+#   pull: if-not-exists  
+#   image: appleboy/drone-scp
+#   settings:
+#     host:
+#       - 192.168.2.7
+#     username: root
+#     password:
+#       from_secret: ssh_pwd
+#     port: 22
+#     command_timeout: 2m
+#     target: /tmp/project-publish-ftp/drone-ci-demo # 目标服务器文件夹路径
+#     overwrite: true
+#     source:
+#       - ./app/publish    # 当前需要传输的文件夹
+#     rm: true
+# - name: deploy     # 步骤3 使用ssh访问主机
+#   pull: if-not-exists  
+#   image: appleboy/drone-ssh 
+#   settings:
+#    # 需要部署的主机地址
+#     host: 192.168.2.7
+#    # 主机ssh端口
+#     port: 22
+#     # 主机登陆用户名
+#     username: root
+#     password: 
+#     # 从drone仓库配置中秘密空间读取密码 ssh登录密码
+#       from_secret: ssh_pwd
+#     script: 
+#       - echo =========暂停并删除旧容器========
+#       - docker stop drone-ci-demo && docker rm drone-ci-demo  
+#       - echo =========删除旧镜像=============
+#       - docker rmi drone-ci-demo:latest 
+#       - echo =========打包镜像========
+#       - cd /tmp/project-publish-ftp/drone-ci-demo/app/publish
+#       - docker build -t drone-ci-demo:latest -t drone-ci-demo:${DRONE_COMMIT} .
+#       - echo ===============运行镜像==========
+#       - docker run --name drone-ci-demo --restart=always  -p 90:80 
+#         -d drone-ci-demo:latest 
+#       - echo ========部署成功========
+
+# - name: rebuild cache   # 构建缓存
+#   image: drillster/drone-volume-cache
+#   volumes:
+#   - name: cache
+#     path: /cache
+#   settings:
+#     rebuild: true
+#     mount:
+#     - ./node_modules
+
+# - name: notify      # 步骤4 部署完成，邮件通知
+#   pull: if-not-exists # 如果镜像不存在则拉取,免去每次都要重新下载
+#   image: drillster/drone-email  
+#   settings:
+#     recipients_only: true # 只发送给指定邮件收件人，不默认发送给流水线创建人
+#     host: smtp.qq.com      #SMTP服务器 例如 smtp.qq.com  
+#     port: 465   #SMTP服务端口  例如QQ邮箱端口465
+#     subject: "Drone Build Complete!"
+#     username:   #邮箱用户名
+#       from_secret: qqmail_username  
+#     password:   #邮箱密码 
+#       from_secret: qqmail_pwd
+#     from: 
+#       from_secret: qqmail_username
+#     recipients:  1111111111@qq.com           #收件人邮箱
+#   when:    #执行条件
+#     status: 
+#     - success
+#     - changed
+#     - failure 
+
+
+# 挂载本地磁盘路径
+volumes:
+# - name: cache
+#   host:
+#     path: /home/drone-cache/front-net/
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+# 可限制哪些分支可以推送自动CICD
+trigger:
+  branch:
+    include:
+    - dev-*
+    - pro-*

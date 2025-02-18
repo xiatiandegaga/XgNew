@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Version>1.1.4</Version>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Authors>cloud.xg</Authors>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<DocumentationFile>\bin\Release\net7.0\Xg.Cloud.Core.xml</DocumentationFile>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="EPPlus" Version="4.5.3.3" />
+		<PackageReference Include="JetBrains.Annotations" Version="2023.3.0" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+		<PackageReference Include="Nito.AsyncEx.Context" Version="5.1.2" />
+		<PackageReference Include="Polly" Version="8.2.0" />
+		<PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
+		<PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
+		<PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+		<PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+		<PackageReference Include="SharpZipLib" Version="1.4.2" />
+		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.5.1" />
+		<PackageReference Include="WebApiClientCore" Version="2.0.4" />
+		<PackageReference Include="RSAExtensions" Version="1.1.1" />
+	</ItemGroup>
+</Project>

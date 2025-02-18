@@ -1,0 +1,8 @@
+FROM xiatiandegaga/net:8.0-debian12
+LABEL maintainer="xq"
+ENV ASPNETCORE_ENVIRONMENT Development
+WORKDIR /app
+COPY    . /app
+ENV ASPNETCORE_URLS=http://+:80  
+EXPOSE 80
+CMD ["dotnet", "IdentityApi.dll"]
