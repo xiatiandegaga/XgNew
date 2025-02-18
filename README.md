@@ -1,11 +1,6 @@
 # Xg
 framework:
-.net 8
-efcore-codefirst
-redis
-vue3
-vite
-
+.net8  efcore-codefirst  redis vue3 vite
 
 1:backend start
 
